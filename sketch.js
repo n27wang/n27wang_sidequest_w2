@@ -1,70 +1,117 @@
-// Object representing a soft animated blob
+// --------------------------------------------------
+// PANIC BLOB with MISCHIEF MECHANIC
+// --------------------------------------------------
+
 let blob = {
-  // Position of the blob (centre of the shape)
   x: 240,
-  y: 160, // centre of the canvas
-
-  // Base size and shape resolution
-  r: 28, // Base radius of the blob
-  points: 48, // Number of vertices around the circle (higher = smoother)
-
-  // Shape deformation settings
-  wobble: 8, // Maximum amount the edge can move in or out
-  wobbleFreq: 0.8, // Controls how lumpy or smooth the blob looks
-
-  // Time values for animation
-  t: 0, // Time input for noise()
-  tSpeed: 0.01, // How fast the blob "breathes"
+  y: 160,
+  r: 30,
+  points: 48,
+  wobble: 14,
+  wobbleFreq: 1.6,
+  t: 0,
+  tSpeed: 0.05, // faster breathing = panic
+  vx: 2,
+  vy: 2,
 };
+
+// Small map objects (snacks)
+let objects = [];
 
 function setup() {
   createCanvas(480, 320);
   noStroke();
 
-  // Text settings for on-screen instructions
+  // Create objects on the map
+  for (let i = 0; i < 6; i++) {
+    objects.push({
+      x: random(40, width - 40),
+      y: random(40, height - 40),
+      r: 8,
+      stolen: false,
+    });
+  }
+
   textFont("sans-serif");
   textSize(14);
 }
 
 function draw() {
-  background(240);
+  // Panic background flicker
+  background(255, 220 + sin(frameCount * 0.2) * 20, 220);
 
-  // --- Animate over time ---
-  // Increment time so noise() changes smoothly every frame
+  // Time update
   blob.t += blob.tSpeed;
 
-  // --- Draw the blob ---
-  // We draw a circle made of many points,
-  // then push each point in or out using Perlin noise
-  fill(20, 120, 255);
-  beginShape();
+  // Nervous movement
+  blob.x += blob.vx + random(-1, 1);
+  blob.y += blob.vy + random(-1, 1);
 
-  // Loop once around the circle
+  // Bounce off walls
+  if (blob.x < 40 || blob.x > width - 40) blob.vx *= -1;
+  if (blob.y < 40 || blob.y > height - 40) blob.vy *= -1;
+
+  drawBlob();
+  drawObjects();
+  checkMischief();
+
+  fill(0);
+  text("Panic Blob: bumps & steals objects", 10, 18);
+}
+
+// --------------------------------------------------
+// Draw the blob
+// --------------------------------------------------
+function drawBlob() {
+  fill(255, 80, 80); // panic red
+
+  beginShape();
   for (let i = 0; i < blob.points; i++) {
-    // Angle around the circle (0 → TAU)
     const a = (i / blob.points) * TAU;
 
-    // Sample Perlin noise using:
-    // - direction (cos/sin of angle)
-    // - time (blob.t) for animation
     const n = noise(
       cos(a) * blob.wobbleFreq + 100,
       sin(a) * blob.wobbleFreq + 100,
       blob.t,
     );
 
-    // Convert noise value (0–1) into a radius offset
     const r = blob.r + map(n, 0, 1, -blob.wobble, blob.wobble);
-
-    // Convert polar coordinates (angle + radius)
-    // into screen coordinates (x, y)
     vertex(blob.x + cos(a) * r, blob.y + sin(a) * r);
   }
-
-  // Close the shape to form a solid blob
   endShape(CLOSE);
+}
 
-  // --- On-screen tip for experimentation ---
-  fill(0);
-  text("Blob breathing via noise(). Try wobble and tSpeed.", 10, 18);
+// --------------------------------------------------
+// Draw map objects
+// --------------------------------------------------
+function drawObjects() {
+  for (let obj of objects) {
+    if (!obj.stolen) {
+      fill(60, 100, 255);
+      ellipse(obj.x, obj.y, obj.r * 2);
+    }
+  }
+}
+
+// --------------------------------------------------
+// Mischief mechanic
+// --------------------------------------------------
+function checkMischief() {
+  for (let obj of objects) {
+    if (obj.stolen) continue;
+
+    let d = dist(blob.x, blob.y, obj.x, obj.y);
+
+    if (d < blob.r + obj.r) {
+      // 50% bump, 50% steal
+      if (random() < 0.5) {
+        // bump object away
+        obj.x += random(-30, 30);
+        obj.y += random(-30, 30);
+      } else {
+        // steal object
+        obj.stolen = true;
+      }
+    }
+  }
 }
